@@ -12,7 +12,7 @@ Run Docker container:
 # CPU-only version
 docker run -e PORT=5000 -p 5000:5000 pixelobjectness-demo
 # Or run on GPU 0
-docker run -e GPU=0 PORT=5000 -p 5000:5000 pixelobjectness-demo
+docker run -e GPU=0 -e PORT=5000 -p 5000:5000 pixelobjectness-demo
 ```
 Process an image:
 ```
