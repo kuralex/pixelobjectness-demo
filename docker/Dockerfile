@@ -37,3 +37,7 @@ RUN pip install --upgrade pip && \
     pip install flask && \
     pip install flask_cors && \
     pip install pillow
+
+RUN git clone --depth 1 https://github.com/kuralex/pixelobjectness-demo.git
+
+CMD ["/usr/bin/python", "/opt/pixelobjectness-demo/pixel_objectness_demo.py"]
