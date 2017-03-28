@@ -35,7 +35,7 @@ caffe_cmd = caffe_binary + ' test --model=' + test_file_path + \
 
 max_image_size = 512
 
-def segment_image(input_image):
+def segment_image(input_image, return_mask=False):
     input_image = Image.open(BytesIO(input_image))
     image_rgb = np.asarray(input_image.convert('RGB'), dtype=np.uint8)
     # OpenCV uses BGR color
@@ -44,7 +44,10 @@ def segment_image(input_image):
     if result is None:
         out_image = image
     else:
-        out_image = draw_result(image, result)
+        if return_mask:
+            out_image = draw_mask(image, result)
+        else:
+            out_image = draw_result(image, result)
     image_nd = cv2.imencode('.jpg', out_image)[1]
     return image_nd.tostring()
 
@@ -109,6 +112,14 @@ def draw_result(image, result, alpha=0.5, color=(0, 255, 0)):
     mask = result[:, :, 1] > result[:, :, 0]
     out_image[mask] = alpha*out_image[mask] + (1-alpha)*np.array(color)
     return out_image
+    
+
+def draw_mask(image, result):
+    rows = min(image.shape[0], result.shape[0])
+    cols = min(image.shape[1], result.shape[1])
+    result = result[0:rows, 0:cols, :]
+    mask = 255*(result[:, :, 1] > result[:, :, 0]).astype(np.uint8)
+    return mask
 
 
 init_lists_and_prototxt()

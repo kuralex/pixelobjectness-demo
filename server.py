@@ -10,7 +10,8 @@ def serve(func, host='0.0.0.0', port=3000):
     @app.route('/predict', methods=['POST'])
     def predict():
         input = request.files['image'].read()
-        image = func(input)
+        return_mask = 'mask' in request.values
+        image = func(input, return_mask)
         return Response(
             image,
             mimetype='image/jpeg')
