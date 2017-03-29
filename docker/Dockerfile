@@ -1,4 +1,4 @@
-FROM nvidia/cuda:7.5-cudnn3-devel-ubuntu14.04
+FROM nvidia/cuda:8.0-cudnn5-devel-ubuntu16.04
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
         build-essential \
@@ -27,10 +27,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /opt
 
-RUN git clone --depth 1 https://bitbucket.org/deeplab/deeplab-public.git && \
+RUN git clone --depth 1 https://github.com/kuralex/deeplab-public.git && \
     cd deeplab-public && mkdir build && cd build && \
-    cmake -DBUILD_EXAMPLES=OFF -DCMAKE_CXX_STANDARD_LIBRARIES="-lmatio" .. && \
-    make -j"$(nproc)" && cd ../.. && \
+    cmake -DBUILD_PYTHON=ON -DBUILD_EXAMPLES=OFF -DCMAKE_CXX_STANDARD_LIBRARIES="-lmatio" .. && \
+    make -j"$(nproc)" && make install && cd ../.. && \
     git clone --depth 1 https://github.com/suyogduttjain/pixelobjectness.git
     
 RUN pip install --upgrade pip && \
