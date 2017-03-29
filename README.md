@@ -22,4 +22,4 @@ Process an image and return mask:
 ```
 curl -F image=@image.jpg -F mask=1 http://localhost:5000/predict -o output.jpg
 ```
-Warning: image size must be not larger than 512x512.
+Warning: image size must be not larger than 513x513.

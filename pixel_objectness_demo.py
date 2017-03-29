@@ -7,33 +7,46 @@ import os
 import sys
 import tempfile
 import time
-
+import caffe
 import server
 
+base_dir = os.path.dirname(os.path.realpath(__file__))
+prototxt_file =  os.path.join(base_dir, 'pixel_objectness_demo.prototxt')
+weight_file = os.path.join(base_dir, '../pixelobjectness/pixel_objectness.caffemodel')
 
-base_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), '../pixelobjectness')
+IMAGE_SIZE = 513
 
-caffe_binary = os.path.join(base_dir, '../deeplab-public/build/tools/caffe')
+net = None
 
-image_dir = os.path.join(base_dir, 'images')
 
-input_image_file = os.path.join(image_dir, 'image.jpg')
-output_mat_file = os.path.join(image_dir, 'image_blob_0.mat')
+def init_net():
+    net = caffe.Net(prototxt_file, weight_file)
+    gpu = os.environ.get('GPU')
+    if (gpu is not None) and (gpu != ''):
+        net.set_mode_gpu()
+        gpu_device = int(gpu)
+        net.set_device(gpu_device)
+        print('Use GPU ' + str(gpu_device))
+    else:
+        net.set_mode_cpu()
+        print('Use CPU')
+    return net
 
-test_template_file_path = os.path.join(base_dir, 'test_template.prototxt')
-test_file_path = os.path.join(base_dir, 'test.prototxt')
-weight_file_path = os.path.join(base_dir, 'pixel_objectness.caffemodel')
 
-gpu = os.environ.get('GPU')
-gpu_param = ''
-if (gpu is not None) and (gpu != ''):
-    gpu_param = ' --gpu=' + gpu
+def forward_net(net, image_bgr):
+    mean = np.array([[[104.008, 116.669, 122.675]]], dtype=np.float32)
+    image = image_bgr - mean
 
-caffe_cmd = caffe_binary + ' test --model=' + test_file_path + \
-    ' --weights=' + weight_file_path + ' --iterations=1' + \
-    gpu_param
+    pad_h = IMAGE_SIZE - image.shape[0]
+    pad_w = IMAGE_SIZE - image.shape[1]
+    image = np.pad(image, pad_width=((0, pad_h), (0, pad_w), (0, 0)), mode='constant', constant_values=0)
+    ch = image.shape[2]
+    input_blob = image.transpose(2, 0, 1).reshape((1, ch, IMAGE_SIZE, IMAGE_SIZE))
 
-max_image_size = 512
+    output = net.forward_all(**{net.inputs[0]: input_blob})
+    output_blob = output[net.outputs[0]]
+    return output_blob[0].transpose(1, 2, 0)
+
 
 def segment_image(input_image, return_mask=False):
     input_image = Image.open(BytesIO(input_image))
@@ -52,55 +65,12 @@ def segment_image(input_image, return_mask=False):
     return image_nd.tostring()
 
 
-def init_lists_and_prototxt():
-    input_list_file  = os.path.join(base_dir, 'image_list.txt')
-    output_list_file = os.path.join(base_dir, 'output_list.txt')
-
-    input_list  = open(input_list_file,'w')
-    output_list = open(output_list_file,'w')
-
-    input_list.write('/image.jpg\n')
-    output_list.write('image\n')
-
-    input_list.close()
-    output_list.close()
-
-    template_file = open(test_template_file_path).readlines()
-    test_file = open(test_file_path, 'w')
-
-    tokens = {}
-    tokens['${IMAGE_DIR}'] = 'root_folder: \"' + image_dir + '\"'
-    tokens['${OUTPUT_DIR}'] = 'prefix: \"' + image_dir + '/\"'
-
-    tokens['${IMAGE_LIST}']        = 'source: \"' + input_list_file + '\"'
-    tokens['${IMAGE_OUTPUT_LIST}'] = 'source: \"' + output_list_file + '\"'
-
-    for line in template_file:
-	    line = line.rstrip()
-
-	    for key in tokens:
-		    if line.find(key)!=-1:
-			    line = '\t'+tokens[key]
-			    break
-
-	    test_file.write(line+'\n')
-
-    test_file.close()
-
-
 def predict(image):
     result = None
-    if image.shape[0] > max_image_size or image.shape[1] > max_image_size:
-        print('Error: image size is larger than ' + str(max_image_size))
+    if image.shape[0] > IMAGE_SIZE or image.shape[1] > IMAGE_SIZE:
+        print('Error: image size is larger than ' + str(IMAGE_SIZE))
     else:
-        cv2.imwrite(input_image_file, image)
-        
-        status = os.system(caffe_cmd)
-
-        if status == 0:
-            result = sio.loadmat(output_mat_file)['data']
-            result = result.reshape(result.shape[0], result.shape[1], 2)
-            result = result.transpose(1, 0, 2)
+        result = forward_net(net, image)
     return result
 
 
@@ -122,6 +92,5 @@ def draw_mask(image, result):
     return mask
 
 
-init_lists_and_prototxt()
+net = init_net()
 server.serve(segment_image, port=os.environ.get('PORT'))
-

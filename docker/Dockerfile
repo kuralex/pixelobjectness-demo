@@ -36,8 +36,12 @@ RUN git clone --depth 1 https://github.com/kuralex/deeplab-public.git && \
 RUN pip install --upgrade pip && \
     pip install flask && \
     pip install flask_cors && \
-    pip install pillow
+    pip install pillow && \
+    pip install protobuf && \
+    pip install scikit-image    
 
 RUN git clone --depth 1 https://github.com/kuralex/pixelobjectness-demo.git
+
+ENV PYTHONPATH /opt/deeplab-public/build/install/python:$PYTHONPATH
 
 CMD ["/usr/bin/python", "/opt/pixelobjectness-demo/pixel_objectness_demo.py"]
